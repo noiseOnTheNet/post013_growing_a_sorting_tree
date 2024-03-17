@@ -62,5 +62,104 @@ is an expression, it is returned as a value.
 Please note that these expressions are not followed by a semicolon.
 
 * Adding nodes to our tree
-Some time we might want to add new branches to our tree
+Some times we might want to add new branches to our tree after we built it.
+
+An example is to create a binary tree for sorting: we first start with a single
+value in our root node:
+
+#+begin_src dot :file images/post013_rust_sort_tree_0.png :exports results
+
+digraph {
+   rankdir = BT;
+   subgraph {
+        root [label=<Root<br/>content=5>, shape="box"];
+   }
+}
+#+end_src
+
+#+RESULTS:
+[[file:images/post013_rust_sort_tree_0.png]]
+
+as values are collected they will be eventually added to the tree: left node will have a value which is less than the parent, right node a value greater than the parent.
+
+#+begin_src dot :file images/post013_rust_sort_tree_1.png :exports results
+digraph {
+   rankdir = BT;
+   subgraph {
+        root [label=<R<br/>content=5>, shape="box"];
+        left [label=<R.left<br/>content=2>, shape="box"];
+        right [label=<R.right<br/>content=6>, shape="box"];
+        left_right [label=<R.left.right<br/>content=4>, shape="box"];
+        root -> left
+        root -> right
+        left -> left_right
+        {rank = same; left; right;}
+        {rank = same; left_right;}
+   }
+}
+#+end_src
+
+#+RESULTS:
+[[file:images/post013_rust_sort_tree_1.png]]
+
+This requires quite a few Rust idioms
+- we need to create a mutable root in order to send mutable references to a
+  function, this is needed to add new branches to our initial root
+- we need to access each node and possibly understand if it has any chidren:
+  this will be done by using a pattern match on the ~Option~ enum.
+- we need to access some children node as a mutable reference; using the ~ref
+  mut~ signature in the pattern match we can achieve this
+
+#+begin_src rust
+fn main() {
+    //this is the root node
+    let mut test = BTree1{ left: None, right: None, content: 5 };
+    add_element(& mut test, 2); // this will add a left branch
+    add_element(& mut test, 4); // this will add a right branch on the left branch
+    add_element(& mut test, 5); // this will be ignored
+    add_element(& mut test, 6); // this will add a rigth branch
+    println!("Hello, world! {:?}", test);
+}
+
+fn add_element(node: & mut BTree1, value: i32){
+    if node.content == value{
+        // if the value is already in the tree do nothing
+        return;
+    } else if node.content < value {
+        // check the left side for smaller values
+        match node.left {
+            None => {
+                node.left = Some(Box::new(
+                    BTree1 { left: None, right :None, content: value}
+                ));
+            }
+            // a tricky part: we need to tell the compiler to return a
+            // mutable reference from this pattern match otherwise it
+            // may try to move the ownership of the data (which we don't want)
+            Some(ref mut subnode) => {
+                add_element(subnode, value);
+            }
+        }
+    } else {
+        match node.right {
+            None => {
+                node.left = Some(Box::new(
+                    BTree1 { left: None, right :None, content: value}
+                ));
+            }
+            Some(ref mut subnode) => {
+                add_element(subnode, value);
+            }
+        }
+    }
+}
+#+end_src
 * Exploring the tree
+we can extract the content of our tree in a way that shows it in order:
+1. enter a node
+2. if it has a left node enter the left node (back to point 1)
+3. print the content of the current node
+4. if it has a right node enter the right node (back to point 1)
+5. return to the parent node
+
+this sequence is called depth-first traversal of our binary tree.
