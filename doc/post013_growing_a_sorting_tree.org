@@ -1,3 +1,5 @@
+#+BLOG: noise on the net
+#+POSTID: 357
 #+ORG2BLOG:
 #+DATE: [2024-03-17 dom 09:22]
 #+OPTIONS: toc:nil num:nil todo:nil pri:nil tags:nil ^:nil
@@ -5,8 +7,12 @@
 #+TAGS: Rust
 #+DESCRIPTION: adding some fruits in a rust binary tree
 #+TITLE: Growing a (sorting) tree
+file:images/jared-subia-TcDc9jLOjGU-unsplash_reduced.jpg
+
+Photo by [[https://unsplash.com/@jaysoobs?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash][Jared Subia]] on [[https://unsplash.com/photos/two-cherries-hanging-from-a-branch-with-leaves-TcDc9jLOjGU?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash][Unsplash]]
+
 * Adding some fruit to our tree
-In a previous post *Growing a (binary) tree* I described what a binary tree is
+In a previous post [[https://noiseonthenet.space/noise/2024/03/growing-a-binary-tree-in-rust/][Growing a (binary) tree]] I described what a binary tree is
 and how to create one in Rust.
 
 To really have an useful tree we may want to add some content to the data structure.
@@ -105,7 +111,7 @@ digraph {
 This requires quite a few Rust idioms
 - we need to create a mutable root in order to send mutable references to a
   function, this is needed to add new branches to our initial root
-- we need to access each node and possibly understand if it has any chidren:
+- we need to access each node and possibly understand if it has any children:
   this will be done by using a pattern match on the ~Option~ enum.
 - we need to access some children node as a mutable reference; using the ~ref
   mut~ signature in the pattern match we can achieve this
@@ -143,7 +149,7 @@ fn add_element(node: & mut BTree1, value: i32){
     } else {
         match node.right {
             None => {
-                node.left = Some(Box::new(
+                node.right = Some(Box::new(
                     BTree1 { left: None, right :None, content: value}
                 ));
             }
@@ -163,3 +169,77 @@ we can extract the content of our tree in a way that shows it in order:
 5. return to the parent node
 
 this sequence is called depth-first traversal of our binary tree.
+
+Before implementing this you may notice that the following expression appears three times:
+#+begin_src rust
+BTree1 { left: None, right :None, content: value}
+#+end_src
+
+this creates a leaf node, i.e. a node with no children: it may deserve a function on its own:
+#+begin_src rust
+fn make_leaf(value: i32) -> BTree1{
+    BTree1 { left: None, right :None, content: value}
+}
+#+end_src
+
+this is how the insertion code looks now using ~make_leaf~:
+#+begin_src rust
+fn add_element(node: & mut BTree1, value: i32){
+    if node.content == value{
+        // if the value is already in the tree do nothing
+        return;
+    } else if node.content > value {
+        // check the left side for smaller values
+        match node.left {
+            None => {
+                node.left = Some(Box::new(make_leaf(value)));
+            }
+            // a tricky part: we need to tell the compiler to return a
+            // mutable reference from this pattern match otherwise it
+            // may try to move the ownership of the data (which we don't want)
+            Some(ref mut subnode) => {
+                add_element(subnode, value);
+            }
+        }
+    } else {
+        match node.right {
+            None => {
+                node.right = Some(Box::new(make_leaf(value)));
+            }
+            Some(ref mut subnode) => {
+                add_element(subnode, value);
+            }
+        }
+    }
+}
+#+end_src
+
+now let's implement our traversal algorithm: we are only keep exploring when children are available so, instead of a pattern matching, an ~if let~ expression is enough
+
+#+begin_src rust
+fn deep_traversal_print(node: & BTree1){
+    if let Some(ref subnode) = node.left {
+        deep_traversal_print(subnode);
+    }
+    print!("{} ",node.content);
+    if let Some(ref subnode) = node.right {
+        deep_traversal_print(subnode);
+    }
+}
+#+end_src
+
+We are all set! Also let's use a loop to create our tree
+#+begin_src rust
+fn main() {
+    let mut test = make_leaf(5);
+    for i in [4,3,5,6]{
+        add_element(& mut test, i);
+    }
+    // this will print 3 4 5 6
+    deep_traversal_print(& test);
+}
+#+end_src
+
+# images/jared-subia-TcDc9jLOjGU-unsplash_reduced.jpg https://noiseonthenet.space/noise/wp-content/uploads/2024/03/jared-subia-TcDc9jLOjGU-unsplash_reduced.jpg
+# images/post013_rust_sort_tree_0.png https://noiseonthenet.space/noise/wp-content/uploads/2024/03/post013_rust_sort_tree_0.png
+# images/post013_rust_sort_tree_1.png https://noiseonthenet.space/noise/wp-content/uploads/2024/03/post013_rust_sort_tree_1.png
