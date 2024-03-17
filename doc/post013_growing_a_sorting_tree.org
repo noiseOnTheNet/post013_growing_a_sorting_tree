@@ -1,0 +1,66 @@
+#+ORG2BLOG:
+#+DATE: [2024-03-17 dom 09:22]
+#+OPTIONS: toc:nil num:nil todo:nil pri:nil tags:nil ^:nil
+#+CATEGORY: Language learning
+#+TAGS: Rust
+#+DESCRIPTION: adding some fruits in a rust binary tree
+#+TITLE: Growing a (sorting) tree
+* Adding some fruit to our tree
+In a previous post *Growing a (binary) tree* I described what a binary tree is
+and how to create one in Rust.
+
+To really have an useful tree we may want to add some content to the data structure.
+let's start with something simple: each node can host a 32 bit integer
+#+begin_src rust
+#[derive(Debug)]
+pub struct BTree0 {
+    pub left : Option<Box<BTree0>>,
+    pub right : Option<Box<BTree0>>,
+    pub content : i32,
+}
+#+end_src
+
+Trees are often built with a recursive function call, i.e. a function which
+calls itself. Of course there should be some way to limit this calls in order to
+avoid infinite loops. Let's start with a function which accepts two values:
+- a maximum possible depth of our tree
+- the current depth of the tree itself.
+The level of each node will be stored in the node content.
+#+begin_src rust
+fn main() {
+    let test = add_level(1, 4);
+    println!("Hello, world! {:?}", test);
+}
+
+fn add_level(current_level : i32, max_level : i32) -> BTree0 {
+    // this expression is the value returned by this function
+    BTree0 {
+        left: (
+            // also if blocks can return a value
+            if current_level < max_level{
+                // each call increases the current level until the maximum
+                Some(Box::new(add_level(current_level + 1, max_level)))
+            } else {
+               None
+            }
+        ),
+        right: (
+            if current_level < max_level{
+                Some(Box::new(add_level(current_level + 1, max_level)))
+            } else {
+               None
+            }
+        ),
+        content: current_level
+    }
+}
+#+end_src
+
+In this code you can see an interesting idiom in Rust: each time the last eselement of a block
+is an expression, it is returned as a value.
+
+Please note that these expressions are not followed by a semicolon.
+
+* Adding nodes to our tree
+Some time we might want to add new branches to our tree
+* Exploring the tree
