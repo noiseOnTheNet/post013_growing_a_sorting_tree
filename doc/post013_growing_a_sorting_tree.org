@@ -240,6 +240,94 @@ fn main() {
 }
 #+end_src
 
+* Adding other Fruits
+
+What if we want to have a tree with a different content: generics to the rescue!
+
+Generics is the Rust way to implement "parametric polymorphism", i.e. create
+data structures and algorithms which accept a type as a parameter.
+
+This is how we can add a parameter ~T~ into our tree.
+#+begin_src rust
+#[derive(Debug)]
+pub struct BTree2<T> {
+    pub left : Option<Box<BTree2<T>>>,
+    pub right : Option<Box<BTree2<T>>>,
+    pub content : T,
+}
+
+// a node can be created updating
+// the function with the generic type T
+fn make_leaf<T>(value: T) -> BTree2<T>{
+    BTree2 { left: None, right :None, content: value}
+}
+#+end_src
+
+Very nice. But what if we want to add elements and have them sorted into the
+tree as before?
+
+We need to define a "total ordering" in our unknown type ~T~; Rust defines a
+trait for types with a total order ~Ord~.
+
+So we need ~T~ to be acceptable only if it implements the ~Ord~ trait. This is
+called "generic contstraint". Let's see how implement this in Rust
+
+#+begin_src rust
+// the constraint appears in the function definition
+fn add_element<T: Ord>(node: & mut BTree2<T>, value: T){
+    if node.content == value{
+        return;
+    } else if node.content > value {
+        match node.left {
+            None => {
+                node.left = Some(Box::new(make_leaf(value)));
+            }
+            Some(ref mut subnode) => {
+                add_element(subnode, value);
+            }
+        }
+    } else {
+        match node.right {
+            None => {
+                node.right = Some(Box::new(make_leaf(value)));
+            }
+            Some(ref mut subnode) => {
+                add_element(subnode, value);
+            }
+        }
+    }
+}
+#+end_src
+
+And what if we want to print our data when we traverse the tree? We need to implement the ~std::fmt::Display~ trait
+
+#+begin_src rust
+use std::fmt::Display;
+
+fn deep_traversal_print<T: Display>(node: & BTree2<T>){
+    if let Some(ref subnode) = node.left {
+        deep_traversal_print(subnode);
+    }
+    print!("{} ",node.content);
+    if let Some(ref subnode) = node.right {
+        deep_traversal_print(subnode);
+    }
+}
+#+end_src
+
+Now we are ready to add more fruit: let's see an example with ~str~
+
+#+begin_src rust
+fn main() {
+    let mut test = make_leaf("orange");
+    for i in ["banana","apple","orange","mango"]{
+        add_element(& mut test, i);
+    }
+    // this will print 3 4 5 6
+    deep_traversal_print(& test);
+}
+#+end_src
+
 # images/jared-subia-TcDc9jLOjGU-unsplash_reduced.jpg https://noiseonthenet.space/noise/wp-content/uploads/2024/03/jared-subia-TcDc9jLOjGU-unsplash_reduced.jpg
 # images/post013_rust_sort_tree_0.png https://noiseonthenet.space/noise/wp-content/uploads/2024/03/post013_rust_sort_tree_0.png
 # images/post013_rust_sort_tree_1.png https://noiseonthenet.space/noise/wp-content/uploads/2024/03/post013_rust_sort_tree_1.png
